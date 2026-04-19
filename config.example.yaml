@@ -1,0 +1,75 @@
+# Terraform Drift Detector Configuration
+# Copy this file to config.yaml and customize for your environment.
+
+# ─── Target Directories ─────────────────────────────────────────────
+# Each target is a Terraform root module directory to monitor for drift.
+targets:
+  - path: ./infrastructure/production
+    workspaces:
+      - default
+    # var_file: production.tfvars
+    # backend_config: backend-prod.hcl
+    enabled: true
+
+  - path: ./infrastructure/staging
+    workspaces:
+      - default
+    enabled: true
+
+  # Example: multi-workspace target
+  # - path: ./infrastructure/shared
+  #   workspaces:
+  #     - us-east-1
+  #     - eu-west-1
+  #   var_file: shared.tfvars
+
+# ─── Detection Settings ─────────────────────────────────────────────
+detection:
+  # Path to terraform binary (default: "terraform")
+  terraform_binary: terraform
+
+  # Number of targets to check in parallel (default: 1)
+  parallelism: 1
+
+  # Run terraform init before plan (default: true)
+  init_before_plan: true
+
+  # Use -refresh-only flag for plan (default: false)
+  # When true, only checks for drift without proposing new changes
+  refresh_only: false
+
+  # Timeout for each terraform plan in seconds (default: 300)
+  plan_timeout: 300
+
+  # Save JSON results to disk (default: true)
+  save_results: true
+
+  # Directory for saved results (default: ./drift-results)
+  results_dir: ./drift-results
+
+  # Default output format: console, json, or markdown (default: console)
+  output_format: console
+
+# ─── Notifications ───────────────────────────────────────────────────
+notifications:
+  slack:
+    # Webhook URL (or set SLACK_WEBHOOK_URL environment variable)
+    webhook_url: ${SLACK_WEBHOOK_URL}
+    channel: "#infrastructure-alerts"
+    username: "Drift Detector"
+    icon_emoji: ":warning:"
+    # When to notify: "always", "drift", or "error" (default: "drift")
+    notify_on: drift
+
+  email:
+    # SMTP settings (or set SMTP_HOST, SMTP_USER, SMTP_PASSWORD env vars)
+    smtp_host: ${SMTP_HOST}
+    smtp_port: 587
+    smtp_user: ${SMTP_USER}
+    smtp_password: ${SMTP_PASSWORD}
+    use_tls: true
+    from_address: drift-detector@example.com
+    to_addresses:
+      - team@example.com
+    subject_prefix: "[Drift Detector]"
+    notify_on: drift
