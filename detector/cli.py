@@ -4,6 +4,9 @@ CLI entry point for the Terraform Drift Detector.
 Provides two subcommands:
   - detect: Run drift detection against configured Terraform directories
   - report: Generate a report from previously saved detection results
+
+Integrates with reporter and notifier factories for pluggable output
+and alerting across multiple channels.
 """
 
 from __future__ import annotations
@@ -18,6 +21,8 @@ from . import __version__
 from .config import Config
 from .drift_checker import DriftChecker
 from .models import DetectionRun
+from .reporters import render_report
+from .notifiers import send_notifications
 
 logger = logging.getLogger("detector")
 
@@ -48,7 +53,9 @@ def build_parser() -> argparse.ArgumentParser:
 Examples:
   %(prog)s detect --config config.yaml
   %(prog)s detect --config config.yaml --output-format json --output-file results.json
+  %(prog)s detect --config config.yaml --notify slack email
   %(prog)s report --input results.json --format markdown
+  %(prog)s report --input results.json --format json --output-file report.json
         """,
     )
     parser.add_argument(
@@ -92,6 +99,12 @@ Examples:
         help="Send notifications via specified channels",
     )
     detect_parser.add_argument(
+        "--no-color",
+        action="store_true",
+        default=False,
+        help="Disable ANSI color codes in console output",
+    )
+    detect_parser.add_argument(
         "--exit-code",
         action="store_true",
         default=False,
@@ -131,6 +144,12 @@ Examples:
         help="Write report to file instead of stdout",
     )
     report_parser.add_argument(
+        "--no-color",
+        action="store_true",
+        default=False,
+        help="Disable ANSI color codes in console output",
+    )
+    report_parser.add_argument(
         "-v",
         "--verbose",
         action="count",
@@ -144,8 +163,8 @@ Examples:
 def cmd_detect(args: argparse.Namespace) -> int:
     """Execute the detect subcommand.
 
-    Loads config, runs drift detection, outputs results, and optionally
-    sends notifications.
+    Loads config, runs drift detection, outputs results using the
+    configured reporter, and optionally sends notifications.
 
     Args:
         args: Parsed CLI arguments.
@@ -173,21 +192,38 @@ def cmd_detect(args: argparse.Namespace) -> int:
     if config.detection.save_results:
         results_dir = Path(config.detection.results_dir)
         results_dir.mkdir(parents=True, exist_ok=True)
-        results_file = results_dir / f"drift-{detection_run.started_at.replace(':', '-')}.json"
+        results_file = (
+            results_dir
+            / f"drift-{detection_run.started_at.replace(':', '-')}.json"
+        )
         results_file.write_text(detection_run.to_json(), encoding="utf-8")
         logger.info("Results saved to %s", results_file)
 
-    # Output results
-    output = _format_output(detection_run, output_format)
+    # Generate report via reporter factory
+    reporter_kwargs = {}
+    if output_format == "console":
+        reporter_kwargs["use_color"] = not args.no_color
+        reporter_kwargs["verbose"] = args.verbose >= 1
+
+    output = render_report(detection_run, output_format, **reporter_kwargs)
+
     if args.output_file:
         Path(args.output_file).write_text(output, encoding="utf-8")
         logger.info("Output written to %s", args.output_file)
     else:
         print(output)
 
-    # Send notifications if requested
+    # Send notifications via notifier factory
     if args.notify:
-        _send_notifications(detection_run, config, args.notify, output_format)
+        markdown_report = render_report(detection_run, "markdown")
+        notification_results = send_notifications(
+            detection_run, config, args.notify, markdown_report
+        )
+        for channel, success in notification_results.items():
+            if success:
+                logger.info("Notification sent via %s", channel)
+            else:
+                logger.warning("Notification failed or skipped for %s", channel)
 
     # Exit code logic
     if args.exit_code and detection_run.has_drift:
@@ -198,7 +234,7 @@ def cmd_detect(args: argparse.Namespace) -> int:
 def cmd_report(args: argparse.Namespace) -> int:
     """Execute the report subcommand.
 
-    Loads saved JSON results and renders them in the requested format.
+    Loads saved JSON results and renders them using the selected reporter.
 
     Args:
         args: Parsed CLI arguments.
@@ -222,7 +258,14 @@ def cmd_report(args: argparse.Namespace) -> int:
     # Reconstruct DetectionRun from saved data
     detection_run = _load_detection_run(data)
 
-    output = _format_output(detection_run, args.format)
+    # Generate report via reporter factory
+    reporter_kwargs = {}
+    if args.format == "console":
+        reporter_kwargs["use_color"] = not args.no_color
+        reporter_kwargs["verbose"] = args.verbose >= 1
+
+    output = render_report(detection_run, args.format, **reporter_kwargs)
+
     if args.output_file:
         Path(args.output_file).write_text(output, encoding="utf-8")
         logger.info("Report written to %s", args.output_file)
@@ -230,132 +273,6 @@ def cmd_report(args: argparse.Namespace) -> int:
         print(output)
 
     return 0
-
-
-def _format_output(run: DetectionRun, fmt: str) -> str:
-    """Format detection results for output.
-
-    Args:
-        run: The detection run to format.
-        fmt: Output format (console, json, markdown).
-
-    Returns:
-        Formatted string.
-    """
-    if fmt == "json":
-        return run.to_json()
-
-    if fmt == "markdown":
-        return _format_markdown(run)
-
-    return _format_console(run)
-
-
-def _format_console(run: DetectionRun) -> str:
-    """Render detection results as colored console output.
-
-    Args:
-        run: The detection run to format.
-
-    Returns:
-        Console-formatted string with ANSI colors.
-    """
-    lines = []
-    lines.append("=" * 60)
-    lines.append("  TERRAFORM DRIFT DETECTION REPORT")
-    lines.append("=" * 60)
-    lines.append(f"  Started:   {run.started_at}")
-    lines.append(f"  Completed: {run.completed_at or 'N/A'}")
-    lines.append(f"  Targets:   {run.total_targets}")
-    lines.append(f"  With Drift: {run.targets_with_drift}")
-    lines.append(f"  Total Drifted Resources: {run.total_drifted_resources}")
-    lines.append(f"  Max Severity: {run.max_severity}")
-    lines.append("=" * 60)
-
-    for result in run.results:
-        status = "\033[31mDRIFT\033[0m" if result.has_drift else "\033[32mOK\033[0m"
-        if result.error_message:
-            status = "\033[33mERROR\033[0m"
-
-        lines.append(f"\n  [{status}] {result.directory} (workspace: {result.workspace})")
-
-        if result.error_message:
-            lines.append(f"    Error: {result.error_message}")
-
-        if result.has_drift:
-            lines.append(f"    Drifted resources: {result.total_drifted}")
-            for resource in result.drifted_resources:
-                severity_color = {
-                    "critical": "\033[31m",
-                    "high": "\033[91m",
-                    "medium": "\033[33m",
-                    "low": "\033[36m",
-                }.get(str(resource.severity), "")
-                reset = "\033[0m"
-                lines.append(
-                    f"      {severity_color}[{resource.severity}]{reset} "
-                    f"{resource.address} → {resource.drift_type}"
-                )
-                if resource.attribute_changes:
-                    attrs = ", ".join(resource.attribute_changes[:5])
-                    if len(resource.attribute_changes) > 5:
-                        attrs += f" (+{len(resource.attribute_changes) - 5} more)"
-                    lines.append(f"        Changed: {attrs}")
-
-    lines.append("\n" + "=" * 60)
-    return "\n".join(lines)
-
-
-def _format_markdown(run: DetectionRun) -> str:
-    """Render detection results as Markdown.
-
-    Args:
-        run: The detection run to format.
-
-    Returns:
-        Markdown-formatted string.
-    """
-    lines = []
-    lines.append("# Terraform Drift Detection Report\n")
-    lines.append(f"**Started:** {run.started_at}  ")
-    lines.append(f"**Completed:** {run.completed_at or 'N/A'}  ")
-    lines.append(f"**Targets scanned:** {run.total_targets}  ")
-    lines.append(f"**Targets with drift:** {run.targets_with_drift}  ")
-    lines.append(f"**Total drifted resources:** {run.total_drifted_resources}  ")
-    lines.append(f"**Max severity:** {run.max_severity}\n")
-
-    if not run.has_drift:
-        lines.append("> No drift detected across any targets.\n")
-        return "\n".join(lines)
-
-    lines.append("## Drift Details\n")
-
-    for result in run.results:
-        if not result.has_drift and not result.error_message:
-            continue
-
-        emoji = "🔴" if result.has_drift else "⚠️"
-        lines.append(f"### {emoji} {result.directory} (`{result.workspace}`)\n")
-
-        if result.error_message:
-            lines.append(f"> **Error:** {result.error_message}\n")
-            continue
-
-        lines.append("| Resource | Type | Drift | Severity | Changed Attributes |")
-        lines.append("|----------|------|-------|----------|--------------------|")
-
-        for resource in result.drifted_resources:
-            attrs = ", ".join(resource.attribute_changes[:3]) if resource.attribute_changes else "—"
-            if len(resource.attribute_changes) > 3:
-                attrs += f" (+{len(resource.attribute_changes) - 3})"
-            lines.append(
-                f"| `{resource.address}` | {resource.resource_type} "
-                f"| {resource.drift_type} | **{resource.severity}** | {attrs} |"
-            )
-
-        lines.append("")
-
-    return "\n".join(lines)
 
 
 def _load_detection_run(data: dict) -> DetectionRun:
@@ -401,47 +318,6 @@ def _load_detection_run(data: dict) -> DetectionRun:
         run.results.append(result)
 
     return run
-
-
-def _send_notifications(
-    run: DetectionRun,
-    config: Config,
-    channels: list,
-    output_format: str,
-) -> None:
-    """Send notifications via configured channels.
-
-    Args:
-        run: Detection run results.
-        config: Application configuration with notification settings.
-        channels: List of notification channels to use.
-        output_format: Format for the notification body.
-    """
-    report_body = _format_markdown(run)
-
-    if "slack" in channels and config.slack:
-        try:
-            from .notifiers.slack_notifier import SlackNotifier
-
-            notifier = SlackNotifier(config.slack)
-            notifier.send(run, report_body)
-            logger.info("Slack notification sent")
-        except ImportError:
-            logger.warning("Slack notifier not available")
-        except Exception as exc:
-            logger.error("Failed to send Slack notification: %s", exc)
-
-    if "email" in channels and config.email:
-        try:
-            from .notifiers.email_notifier import EmailNotifier
-
-            notifier = EmailNotifier(config.email)
-            notifier.send(run, report_body)
-            logger.info("Email notification sent")
-        except ImportError:
-            logger.warning("Email notifier not available")
-        except Exception as exc:
-            logger.error("Failed to send email notification: %s", exc)
 
 
 def main() -> None:
