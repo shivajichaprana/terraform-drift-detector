@@ -1,0 +1,118 @@
+# ──────────────────────────────────────────────────────────────────────
+# Multi-Repository Drift Detection Configuration
+#
+# This example shows how to configure drift detection across multiple
+# Terraform repositories and workspaces. Each target represents a
+# separate Terraform root module with its own state.
+#
+# Use this as a starting point for organizations managing infrastructure
+# across multiple repositories, environments, and cloud accounts.
+# ──────────────────────────────────────────────────────────────────────
+
+# ─── Targets ─────────────────────────────────────────────────────────
+# Each target is a Terraform root module directory to monitor.
+targets:
+  # Production VPC and networking
+  - path: /repos/infra-networking/environments/production
+    workspaces:
+      - us-east-1
+      - eu-west-1
+      - ap-southeast-1
+    var_file: production.tfvars
+    backend_config: backends/production.hcl
+    enabled: true
+
+  # Staging environment — single region
+  - path: /repos/infra-networking/environments/staging
+    workspaces:
+      - us-east-1
+    var_file: staging.tfvars
+    backend_config: backends/staging.hcl
+    enabled: true
+
+  # Kubernetes cluster infrastructure
+  - path: /repos/infra-eks/clusters/production
+    workspaces:
+      - default
+    var_file: production.tfvars
+    enabled: true
+
+  # Database infrastructure (RDS, ElastiCache)
+  - path: /repos/infra-databases/production
+    workspaces:
+      - default
+    var_file: production.tfvars
+    enabled: true
+
+  # IAM roles and policies — high priority for drift
+  - path: /repos/infra-iam/organization
+    workspaces:
+      - default
+    enabled: true
+
+  # DNS and Route53 configuration
+  - path: /repos/infra-dns/zones
+    workspaces:
+      - default
+    enabled: true
+
+  # Monitoring stack (CloudWatch, SNS topics)
+  - path: /repos/infra-monitoring/production
+    workspaces:
+      - default
+    var_file: production.tfvars
+    enabled: true
+
+  # Disabled: legacy VPC being decommissioned
+  - path: /repos/infra-legacy-vpc/us-east-1
+    workspaces:
+      - default
+    enabled: false
+
+# ─── Detection Settings ─────────────────────────────────────────────
+detection:
+  # Use a specific Terraform version binary
+  terraform_binary: terraform
+
+  # Check targets in parallel (max 4 concurrent plans)
+  parallelism: 4
+
+  # Always init before plan to pull latest provider versions
+  init_before_plan: true
+
+  # Use refresh-only to detect drift without showing new resource diffs
+  refresh_only: true
+
+  # 10-minute timeout for large infrastructure stacks
+  plan_timeout: 600
+
+  # Persist results for historical tracking
+  save_results: true
+  results_dir: /app/drift-results
+
+  # JSON output for programmatic consumption
+  output_format: json
+
+# ─── Notifications ───────────────────────────────────────────────────
+notifications:
+  slack:
+    webhook_url: ${SLACK_WEBHOOK_URL}
+    channel: "#infrastructure-drift"
+    username: "Drift Detector"
+    icon_emoji: ":detective:"
+    # Only notify when drift is found
+    notify_on: drift
+
+  email:
+    smtp_host: ${SMTP_HOST}
+    smtp_port: 587
+    smtp_user: ${SMTP_USER}
+    smtp_password: ${SMTP_PASSWORD}
+    use_tls: true
+    from_address: drift-detector@company.com
+    to_addresses:
+      - platform-team@company.com
+      - security-team@company.com
+    subject_prefix: "[DRIFT]"
+    # Notify on both drift and errors for email
+    notify_on: always
