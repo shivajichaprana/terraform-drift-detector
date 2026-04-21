@@ -2,7 +2,7 @@
 Notification senders for drift detection alerts.
 
 Provides a factory function to instantiate notifiers based on
-channel name. Supported channels: slack, email.
+channel name. Supported channels: slack, email, github.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Union
 
 from .slack_notifier import SlackNotifier
 from .email_notifier import EmailNotifier
+from .github_notifier import GitHubNotifier
 
 if TYPE_CHECKING:
     from ..config import Config, SlackConfig, EmailConfig
@@ -19,11 +20,12 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-NotifierType = Union[SlackNotifier, EmailNotifier]
+NotifierType = Union[SlackNotifier, EmailNotifier, GitHubNotifier]
 
 _NOTIFIER_MAP = {
     "slack": ("slack", SlackNotifier),
     "email": ("email", EmailNotifier),
+    "github": ("github", GitHubNotifier),
 }
 
 
@@ -31,7 +33,7 @@ def get_notifier(channel: str, config: "Config") -> NotifierType:
     """Factory function to create a notifier instance.
 
     Args:
-        channel: Notification channel name (slack, email).
+        channel: Notification channel name (slack, email, github).
         config: Application configuration with channel-specific settings.
 
     Returns:
@@ -55,6 +57,23 @@ def get_notifier(channel: str, config: "Config") -> NotifierType:
                 "Add a 'notifications.email' section to your config."
             )
         return EmailNotifier(config.email)
+
+    if channel == "github":
+        import os
+
+        token = os.getenv("GH_TOKEN", os.getenv("GITHUB_TOKEN", ""))
+        repo = os.getenv("GITHUB_REPOSITORY", "")
+        if not token:
+            raise ValueError(
+                "GitHub notification requires GH_TOKEN or GITHUB_TOKEN "
+                "environment variable."
+            )
+        if not repo:
+            raise ValueError(
+                "GitHub notification requires GITHUB_REPOSITORY "
+                "environment variable (owner/repo format)."
+            )
+        return GitHubNotifier(token=token, repo=repo)
 
     valid = ", ".join(sorted(_NOTIFIER_MAP.keys()))
     raise ValueError(
@@ -107,6 +126,7 @@ def send_notifications(
 __all__ = [
     "SlackNotifier",
     "EmailNotifier",
+    "GitHubNotifier",
     "get_notifier",
     "send_notifications",
 ]
