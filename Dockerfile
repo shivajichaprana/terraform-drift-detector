@@ -20,7 +20,7 @@ FROM hashicorp/terraform:1.7.0 AS terraform
 FROM python:3.11-slim AS base
 
 # Metadata
-LABEL maintainer="Shivaji Chaprana <shivajichaprana97@gmail.com>"
+LABEL maintainer="Project Maintainers"
 LABEL org.opencontainers.image.title="terraform-drift-detector"
 LABEL org.opencontainers.image.description="Automated Terraform state drift detection"
 LABEL org.opencontainers.image.source="https://github.com/shivajichaprana/terraform-drift-detector"

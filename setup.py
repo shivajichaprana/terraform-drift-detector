@@ -15,8 +15,8 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="terraform-drift-detector",
     version="1.0.0",
-    author="Shivaji Chaprana",
-    author_email="shivajichaprana97@gmail.com",
+    author="Project Maintainers",
+    author_email="noreply@example.invalid",
     description="Automated Terraform state drift detection with scheduled checks, alerting, and actionable reports",
     long_description=long_description,
     long_description_content_type="text/markdown",

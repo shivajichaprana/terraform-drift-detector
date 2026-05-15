@@ -6,4 +6,4 @@ workspaces and generates actionable reports with notification support.
 """
 
 __version__ = "1.0.0"
-__author__ = "Shivaji Chaprana"
+__author__ = "Project Maintainers"
