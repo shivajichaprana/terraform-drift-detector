@@ -1,4 +1,4 @@
-#\!/usr/bin/env bash
+#!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────────────
 # run-drift-check.sh — CI wrapper for Terraform drift detection
 #
@@ -59,19 +59,19 @@ log_success() {
 check_prerequisites() {
     local missing=()
 
-    if \! command -v terraform &>/dev/null; then
+    if ! command -v terraform &>/dev/null; then
         missing+=("terraform")
     fi
 
-    if \! command -v python3 &>/dev/null && \! command -v python &>/dev/null; then
+    if ! command -v python3 &>/dev/null && ! command -v python &>/dev/null; then
         missing+=("python3")
     fi
 
-    if \! command -v drift-detector &>/dev/null; then
+    if ! command -v drift-detector &>/dev/null; then
         # Fall back to module invocation
         local python_cmd
         python_cmd=$(command -v python3 2>/dev/null || command -v python 2>/dev/null)
-        if \! "$python_cmd" -m detector --version &>/dev/null 2>&1; then
+        if ! "$python_cmd" -m detector --version &>/dev/null 2>&1; then
             missing+=("drift-detector (pip install -e .)")
         fi
     fi
@@ -105,7 +105,7 @@ get_detector_cmd() {
 validate_config() {
     local config_file="$1"
 
-    if [ \! -f "$config_file" ]; then
+    if [ ! -f "$config_file" ]; then
         log_error "Configuration file not found: $config_file"
         exit 1
     fi
@@ -113,7 +113,7 @@ validate_config() {
     # Basic YAML syntax check
     local python_cmd
     python_cmd=$(get_python_cmd)
-    if \! "$python_cmd" -c "import yaml; yaml.safe_load(open('$config_file'))" 2>/dev/null; then
+    if ! "$python_cmd" -c "import yaml; yaml.safe_load(open('$config_file'))" 2>/dev/null; then
         log_error "Invalid YAML in configuration file: $config_file"
         exit 1
     fi
@@ -236,7 +236,7 @@ case $EXIT_CODE in
         log_success "No drift detected. Infrastructure is in sync."
         ;;
     2)
-        log_warn "Drift detected\! Review the report above for details."
+        log_warn "Drift detected! Review the report above for details."
         ;;
     *)
         log_error "Detection encountered an error (exit code: $EXIT_CODE)"

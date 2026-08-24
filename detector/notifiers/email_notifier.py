@@ -170,7 +170,7 @@ class EmailNotifier:
         status_text = "DRIFT DETECTED" if run.has_drift else "NO DRIFT"
 
         html_parts = [
-            "<\!DOCTYPE html>",
+            "<!DOCTYPE html>",
             '<html><head><meta charset="utf-8"></head>',
             '<body style="font-family: -apple-system, BlinkMacSystemFont, '
             "sans-serif; max-width: 800px; margin: 0 auto; "

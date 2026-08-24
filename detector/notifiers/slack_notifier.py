@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..config import SlackConfig
-    from ..models import DetectionRun
+    from ..models import DetectionRun, DriftResult
 
 logger = logging.getLogger(__name__)
 

@@ -42,7 +42,7 @@ _DRIFT_TYPE_SYMBOLS = {
     "add": "+",
     "change": "~",
     "destroy": "-",
-    "replace": "\!",
+    "replace": "!",
 }
 
 
@@ -173,7 +173,7 @@ class ConsoleReporter:
             )
         if summary.get("replace", 0) > 0:
             summary_parts.append(
-                self._color(f"\!{summary['replace']} replace", _Colors.BRIGHT_RED)
+                self._color(f"!{summary['replace']} replace", _Colors.BRIGHT_RED)
             )
 
         lines.append(f"    Drifted: {result.total_drifted} ({', '.join(summary_parts)})")
@@ -213,11 +213,11 @@ class ConsoleReporter:
             )
         elif resource.attribute_changes:
             count = len(resource.attribute_changes)
-            attrs = ", ".join(resource.attribute_changes[:5])
+            attr_str = ", ".join(resource.attribute_changes[:5])
             if count > 5:
-                attrs += f" (+{count - 5} more)"
+                attr_str += f" (+{count - 5} more)"
             lines.append(
-                f"        {self._color('Changed:', _Colors.DIM)} {attrs}"
+                f"        {self._color('Changed:', _Colors.DIM)} {attr_str}"
             )
 
         return "\n".join(lines)

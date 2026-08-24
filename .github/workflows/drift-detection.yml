@@ -69,7 +69,7 @@ jobs:
 
       - name: Validate configuration
         run: |
-          if [ \! -f "${{ env.CONFIG_FILE }}" ]; then
+          if [ ! -f "${{ env.CONFIG_FILE }}" ]; then
             echo "::error::Configuration file not found: ${{ env.CONFIG_FILE }}"
             exit 1
           fi
@@ -95,7 +95,7 @@ jobs:
 
           if [ "$EXIT_CODE" -eq 2 ]; then
             echo "drift_detected=true" >> "$GITHUB_OUTPUT"
-            echo "::warning::Infrastructure drift detected\!"
+            echo "::warning::Infrastructure drift detected!"
           elif [ "$EXIT_CODE" -eq 0 ]; then
             echo "drift_detected=false" >> "$GITHUB_OUTPUT"
             echo "No drift detected."
@@ -118,7 +118,7 @@ jobs:
       - name: Create GitHub Issue
         if: >
           steps.detect.outputs.drift_detected == 'true' &&
-          (github.event.inputs.create_issue \!= 'false')
+          (github.event.inputs.create_issue != 'false')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -129,7 +129,7 @@ jobs:
       - name: Send Slack notification
         if: >
           steps.detect.outputs.drift_detected == 'true' &&
-          (github.event.inputs.notify_slack \!= 'false')
+          (github.event.inputs.notify_slack != 'false')
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |

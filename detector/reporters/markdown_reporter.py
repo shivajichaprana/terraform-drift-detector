@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..models import DetectionRun, DriftResult, DriftedResource
+    from ..models import DetectionRun, DriftResult, DriftedResource, Severity
 
 
 _SEVERITY_EMOJI = {

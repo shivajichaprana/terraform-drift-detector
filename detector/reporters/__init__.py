@@ -7,7 +7,7 @@ based on output format selection. Supported formats: console, json, markdown.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Dict, Type, Union
 
 from .console_reporter import ConsoleReporter
 from .json_reporter import JsonReporter
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 ReporterType = Union[ConsoleReporter, JsonReporter, MarkdownReporter]
 
-_REPORTERS = {
+_REPORTERS: Dict[str, Type[ReporterType]] = {
     "console": ConsoleReporter,
     "json": JsonReporter,
     "markdown": MarkdownReporter,

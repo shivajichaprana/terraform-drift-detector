@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..models import DetectionRun
+    from ..models import DetectionRun, DriftedResource
 
 
 class JsonReporter:
