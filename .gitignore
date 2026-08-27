@@ -26,6 +26,12 @@ ENV/
 .coverage
 htmlcov/
 .mypy_cache/
+# CI writes these two on every run:
+#   pytest --cov-report=xml --junitxml=pytest-results.xml
+# They were not ignored, so running the suite locally left the tree dirty and a
+# `git add -A` would have committed build output into the repository.
+coverage.xml
+pytest-results.xml
 
 # Terraform
 .terraform/
