@@ -3,7 +3,6 @@
 > Automated Terraform state drift detection with scheduled checks, alerting, and actionable reports.
 
 [![CI](https://github.com/shivajichaprana/terraform-drift-detector/actions/workflows/ci.yml/badge.svg)](https://github.com/shivajichaprana/terraform-drift-detector/actions/workflows/ci.yml)
-[![Drift Detection](https://github.com/shivajichaprana/terraform-drift-detector/actions/workflows/drift-detection.yml/badge.svg)](https://github.com/shivajichaprana/terraform-drift-detector/actions/workflows/drift-detection.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 
@@ -150,7 +149,7 @@ All channels share a common interface (`notifier.send(run, report_body)`) — ad
 
 The repo ships with `.github/workflows/drift-detection.yml`, a GitHub Actions workflow that:
 
-1. Runs daily at `06:00 UTC` (configurable via `schedule.cron`).
+1. Runs on whatever `schedule.cron` you set — the shipped copy has no schedule of its own, because this repository holds the tool rather than any Terraform for it to check.
 2. Installs Terraform + this tool.
 3. Runs drift detection against the configured targets.
 4. Creates a GitHub Issue titled `Drift Detected — <target> (<workspace>)` if drift is found, deduping by title so repeated drift updates the same Issue instead of spamming.
