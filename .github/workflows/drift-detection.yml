@@ -1,19 +1,23 @@
 # ──────────────────────────────────────────────────────────────────────
-# Terraform Drift Detection — Scheduled Workflow
+# Terraform Drift Detection — reference workflow
 #
-# Runs daily at 06:00 UTC against configured Terraform directories.
-# When drift is found, creates a GitHub Issue with full details and
-# optionally sends Slack notifications.
+# THIS IS A TEMPLATE, meant to be copied into the repository that holds your
+# Terraform. Copy it, set the cron you want, and point CONFIG_FILE at a
+# config.yaml describing your targets. See "Running on a schedule" in the
+# README.
 #
-# Manual trigger via workflow_dispatch is also supported for ad-hoc checks.
+# It deliberately has no schedule of its own. This repository ships the tool,
+# not any Terraform: config.yaml is gitignored, the infrastructure/ paths in
+# config.example.yaml do not exist here, and there are no AWS credentials. A
+# cron here could only ever fail at the config check every morning and say
+# nothing about whether the detector works. That is what ci.yml is for -
+# flake8, mypy and pytest against the package itself.
+#
+# workflow_dispatch is kept so the workflow can still be exercised by hand.
 # ──────────────────────────────────────────────────────────────────────
 name: Drift Detection
 
 on:
-  schedule:
-    # Run daily at 06:00 UTC (adjust to your team's timezone)
-    - cron: "0 6 * * *"
-
   workflow_dispatch:
     inputs:
       config_file:
