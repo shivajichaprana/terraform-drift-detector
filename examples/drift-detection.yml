@@ -6,12 +6,16 @@
 # config.yaml describing your targets. See "Running on a schedule" in the
 # README.
 #
-# It deliberately has no schedule of its own. This repository ships the tool,
-# not any Terraform: config.yaml is gitignored, the infrastructure/ paths in
-# config.example.yaml do not exist here, and there are no AWS credentials. A
-# cron here could only ever fail at the config check every morning and say
-# nothing about whether the detector works. That is what ci.yml is for -
-# flake8, mypy and pytest against the package itself.
+# It lives in examples/ rather than .github/workflows/ and has no schedule of
+# its own, on purpose. This repository ships the tool, not any Terraform:
+# config.yaml is gitignored, the infrastructure/ paths in config.example.yaml
+# do not exist here, and there are no AWS credentials. Left in
+# .github/workflows/ it would be a workflow that can only fail, with a status
+# badge to match. Testing the detector itself is what ci.yml is for - flake8,
+# mypy and pytest against the package.
+#
+# To use it: copy this file into .github/workflows/ of the repository that
+# holds your Terraform, add a schedule: block, and set CONFIG_FILE.
 #
 # workflow_dispatch is kept so the workflow can still be exercised by hand.
 # ──────────────────────────────────────────────────────────────────────

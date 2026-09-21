@@ -147,9 +147,9 @@ All channels share a common interface (`notifier.send(run, report_body)`) — ad
 
 ## Running on a schedule
 
-The repo ships with `.github/workflows/drift-detection.yml`, a GitHub Actions workflow that:
+The repo ships with [`examples/drift-detection.yml`](./examples/drift-detection.yml), a GitHub Actions workflow to copy into the repository that holds your Terraform. Drop it in `.github/workflows/`, set the cron you want, and point `CONFIG_FILE` at your `config.yaml`. It:
 
-1. Runs on whatever `schedule.cron` you set — the shipped copy has no schedule of its own, because this repository holds the tool rather than any Terraform for it to check.
+1. Runs on whatever `schedule.cron` you set. The shipped copy has none, because it lives outside `.github/workflows/` here — this repository holds the tool, not any Terraform for it to check, so a cron here would fail every morning and tell you nothing about whether the detector works.
 2. Installs Terraform + this tool.
 3. Runs drift detection against the configured targets.
 4. Creates a GitHub Issue titled `Drift Detected — <target> (<workspace>)` if drift is found, deduping by title so repeated drift updates the same Issue instead of spamming.
@@ -214,10 +214,10 @@ terraform-drift-detector/
 ├── scripts/
 │   └── run-drift-check.sh   # CI wrapper (init + workspace select + detect)
 ├── examples/
-│   └── multi-repo-config.yaml
+│   ├── multi-repo-config.yaml
+│   └── drift-detection.yml  # workflow to copy into YOUR Terraform repo
 ├── .github/workflows/
-│   ├── ci.yml               # pytest + flake8 + mypy on every push
-│   └── drift-detection.yml  # daily cron -> detect -> open Issue
+│   └── ci.yml               # pytest + flake8 + mypy on every push
 ├── Dockerfile               # Containerized detector
 ├── config.example.yaml
 ├── setup.py
